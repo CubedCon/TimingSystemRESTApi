@@ -3,6 +3,7 @@ package com.frosthex.timingsystem.restapi;
 import java.io.File;
 import java.util.logging.Logger;
 
+import com.tekad.TimingLeague.TImingLeague;
 import org.bukkit.Bukkit;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.plugin.Plugin;
@@ -43,6 +44,8 @@ public class TimingSystemRESTApiPlugin extends JavaPlugin {
 	public static Logger log = Bukkit.getLogger();
 	
 	public static String prefix = Messager.color("&8[&bTimingSystem&fRESTApi&8] &7");
+
+	public static TImingLeague timingleague;
 	
 
 	@Override
@@ -77,7 +80,16 @@ public class TimingSystemRESTApiPlugin extends JavaPlugin {
 			if (!supportedVersion) {
 				Messager.msgConsole("&cTimingSystemRESTApi version " + getDescription().getVersion() + " doesn't support TimingSystem version "
 			+ timingSystemVersion + ". The REST api will attempt to run as normal, but you may encounter issues.");
-			}	
+			}
+
+			Plugin Tl = Bukkit.getPluginManager().getPlugin("TImingLeague");
+
+			if (Tl instanceof TImingLeague league){
+				timingleague = league;
+				Messager.msgConsole("hooked into timing league");
+			} else{
+				Messager.msgConsole("Timing league not found");
+			}
 		}
 		
 		// Config
@@ -127,6 +139,5 @@ public class TimingSystemRESTApiPlugin extends JavaPlugin {
 
 	public static TimingSystemRESTApiPlugin getInstance() {
 		return instance;
-	}	
-	
+	}
 }
