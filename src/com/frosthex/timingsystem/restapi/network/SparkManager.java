@@ -7,10 +7,13 @@ import static spark.Spark.port;
 import static spark.Spark.staticFiles;
 import static spark.Spark.stop;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.tekad.TimingLeague.*;
+import com.tekad.TimingLeague.API.TimingLeagueAPI;
 import me.makkuusen.timing.system.round.RoundType;
 import me.makkuusen.timing.system.track.medals.TrackMedals;
 import org.bukkit.Bukkit;
@@ -37,6 +40,7 @@ import me.makkuusen.timing.system.tplayer.TPlayer;
 import me.makkuusen.timing.system.track.Track;
 import me.makkuusen.timing.system.track.options.TrackOption;
 import me.makkuusen.timing.system.track.tags.TrackTag;
+import org.bukkit.plugin.Plugin;
 
 /**
  * TimingSystemRESTApi - Provides a basic JSON REST API for the TimingSystem plugin.
@@ -527,6 +531,175 @@ public class SparkManager {
 		get("/api/v1/readonly/tracks/example/dontuse", (request, response) -> {
 			return "";
 		});
+
+		// Timing Leauge stuffs v4 -----------------------------------------------------------------------------------
+		boolean hasTimingLeague =
+				Bukkit.getPluginManager().getPlugin("TimingLeague") != null;
+
+		if (hasTimingLeague) {
+			Plugin plugin = Bukkit.getPluginManager().getPlugin("TImingLeague");
+			if (plugin instanceof TImingLeague leaguePlugin) {
+				TimingLeagueAPI leagueAPI = leaguePlugin.getApi();
+				get("/api/v4/readonly/leagues", (req, res) -> {
+
+					Collection<League> leagues = leagueAPI.getLeagues();
+					Messager.msgConsole("Leagues seen " + leagues.size());
+
+					JsonArray arr = new JsonArray();
+
+					for (League league : leagues) {
+						JsonObject obj = new JsonObject();
+
+						obj.addProperty("name", league.getName());
+						obj.addProperty("driver_count", league.getDrivers().size());
+						obj.addProperty("team_count", league.getTeams().size());
+						obj.addProperty("event_count", league.getCalendarEntries().size());
+
+						arr.add(obj);
+					}
+
+					res.type("application/json");
+					res.status(200);
+					return arr.toString();
+				});
+
+				get("/api/v4/readonly/leagues/:name", (req, res) -> {
+					String name = req.params("name");
+					League league = leagueAPI.getLeague(name);
+
+					JsonObject obj = new JsonObject();
+					obj.addProperty("name", league.getName());
+					obj.addProperty("predicted_driver_count", league.getPredictedDriverCount());
+					obj.addProperty("team_mode", league.getTeamMode().toString());
+
+					obj.addProperty("driver_standings_enabled", league.isDriverStandingsEnabled());
+					obj.addProperty("team_standings_enabled", league.isTeamStandingsEnabled());
+
+					// Teams
+					JsonArray teams = new JsonArray();
+					for (Team t : league.getTeams()) {
+						JsonObject tObj = new JsonObject();
+						tObj.addProperty("name", t.getName());
+						tObj.addProperty("color", t.getColor());
+						tObj.addProperty("points", t.getPoints());
+						tObj.addProperty("members", t.getMembers().size());
+						teams.add(tObj);
+					}
+					obj.add("teams", teams);
+
+					res.status(200);
+					return obj.toString();
+				});
+
+				get("/api/v4/readonly/leagues/:name/standings/drivers", (req, res) -> {
+					String name = req.params("name");
+					League league = leagueAPI.getLeague(name);
+
+					JsonObject obj = new JsonObject();
+					JsonArray arr = new JsonArray();
+
+					for (var entry : league.getDriverStandings().entrySet()) {
+						JsonObject d = new JsonObject();
+						d.addProperty("uuid", entry.getKey());
+						d.addProperty("points", entry.getValue());
+						arr.add(d);
+					}
+
+					obj.add("drivers", arr);
+
+					res.status(200);
+					return obj.toString();
+				});
+
+				get("/api/v4/readonly/leagues/:name/standings/teams", (req, res) -> {
+					String name = req.params("name");
+					League league = leagueAPI.getLeague(name);
+
+					JsonObject obj = new JsonObject();
+					JsonArray arr = new JsonArray();
+
+					for (var entry : league.getTeamStandings().entrySet()) {
+						JsonObject t = new JsonObject();
+						t.addProperty("name", entry.getKey());
+						t.addProperty("points", entry.getValue());
+						arr.add(t);
+					}
+
+					obj.add("teams", arr);
+
+					res.status(200);
+					return obj.toString();
+				});
+
+				get("/api/v4/readonly/leagues/:name/calendar", (req, res) -> {
+					String name = req.params("name");
+					League league = leagueAPI.getLeague(name);
+
+					JsonArray arr = new JsonArray();
+
+					for (CalendarEntry e : league.getCalendarEntries()) {
+						JsonObject obj = new JsonObject();
+						obj.addProperty("event", e.getEventName());
+						obj.addProperty("category", e.getCategoryId());
+						obj.addProperty("heat", e.getHeatId());
+						arr.add(obj);
+					}
+
+					res.status(200);
+					return arr.toString();
+				});
+
+				get("/api/v4/readonly/leagues/:name/team/:team", (req, res) -> {
+					String name = req.params("name");
+					League league = leagueAPI.getLeague(name);
+					Team team = league.getTeam(req.params("team"));
+
+					if (team == null) {
+						halt(404, "{\"error\":true,\"message\":\"Team not found\"}");
+					}
+
+					JsonObject obj = new JsonObject();
+					obj.addProperty("name", team.getName());
+					obj.addProperty("color", team.getColor());
+					obj.addProperty("points", team.getPoints());
+
+					JsonArray members = new JsonArray();
+					for (String m : team.getMembers()) {
+						members.add(m);
+					}
+					obj.add("members", members);
+
+					res.status(200);
+					return obj.toString();
+				});
+
+				get("api/v4/readonly/leagues/:name/categories", (req, res) -> {
+					String name = req.params("name");
+					League league = leagueAPI.getLeague(name);
+
+					if (league.getCategories() == null){
+						halt(404, "{\"error\":true,\"message\":\"categories not found\"}");
+					}
+
+					JsonArray arr = new JsonArray();
+
+					for (String catName : league.getCategories().keySet()){
+						JsonObject obj = new JsonObject();
+						EventCategory category = league.getCategories().get(catName);
+
+						obj.addProperty("id", category.getId());
+						obj.addProperty("displayName", category.getDisplayName());
+						obj.addProperty("scoring system", category.getScoringSystemName());
+						obj.addProperty("mulligan count", category.getMulliganCount());
+
+						arr.add(obj);
+					}
+
+					return arr;
+				});
+			}
+
+		}
 	}
 
 	public static void stopSpark() {
