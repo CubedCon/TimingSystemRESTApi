@@ -673,7 +673,7 @@ public class SparkManager {
 					return obj.toString();
 				});
 
-				get("api/v4/readonly/leagues/:name/categories", (req, res) -> {
+				get("/api/v4/readonly/leagues/:name/categories", (req, res) -> {
 					String name = req.params("name");
 					League league = leagueAPI.getLeague(name);
 
