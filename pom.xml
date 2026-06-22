@@ -62,9 +62,9 @@
 			<version>2.9.4</version>
 		</dependency>
 		<dependency>
-			<groupId>com.tekad</groupId>
-			<artifactId>timingleague</artifactId>
-			<version>1.2</version>
+			<groupId>com.github.FrostHexABG</groupId>
+			<artifactId>TImingLeague</artifactId>
+			<version>1.2.1</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
