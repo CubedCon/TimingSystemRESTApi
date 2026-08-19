@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 import com.tekad.TimingLeague.*;
 import com.tekad.TimingLeague.API.TimingLeagueAPI;
@@ -22,6 +23,8 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.inventory.ItemStack;
 
 import com.frosthex.timingsystem.restapi.TimingSystemRESTApiPlugin;
+import com.frosthex.timingsystem.restapi.integrations.DailyGPRoutes;
+import com.frosthex.timingsystem.restapi.integrations.PartyTSRoutes;
 import com.frosthex.timingsystem.restapi.utils.Messager;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -532,6 +535,18 @@ public class SparkManager {
 			return "";
 		});
 
+		if (Bukkit.getPluginManager().isPluginEnabled("DailyGP")) {
+			registerOptionalRoutes("DailyGP", DailyGPRoutes::register);
+		} else {
+			Messager.msgConsole("&7DailyGP isn't installed, so its routes were skipped.");
+		}
+
+		if (Bukkit.getPluginManager().isPluginEnabled("PartyTS")) {
+			registerOptionalRoutes("PartyTS", PartyTSRoutes::register);
+		} else {
+			Messager.msgConsole("&7PartyTS isn't installed, so the duel routes were skipped.");
+		}
+
 		// Timing Leauge stuffs v4 -----------------------------------------------------------------------------------
 		boolean hasTimingLeague =
 				Bukkit.getPluginManager().getPlugin("TimingLeague") != null;
@@ -699,6 +714,17 @@ public class SparkManager {
 				});
 			}
 
+		}
+	}
+
+	private static void registerOptionalRoutes(String pluginName, BooleanSupplier registrar) {
+		try {
+			if (registrar.getAsBoolean()) {
+				Messager.msgConsole("&aHooked into " + pluginName + ".");
+			}
+		} catch (Throwable t) {
+			Messager.msgConsole("&c[WARN] Couldn't register the " + pluginName + " routes: " + t + ". The rest of the "
+					+ "API is unaffected.");
 		}
 	}
 

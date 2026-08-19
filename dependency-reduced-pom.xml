@@ -141,6 +141,18 @@
       <version>1.2.1</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>com.github.M2B5</groupId>
+      <artifactId>DailyGP</artifactId>
+      <version>1.0.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>me._2818</groupId>
+      <artifactId>PartyTS</artifactId>
+      <version>2.2.0</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
