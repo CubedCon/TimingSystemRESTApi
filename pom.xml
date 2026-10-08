@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.frosthex</groupId>
 	<artifactId>timingsystem.restapi</artifactId>
-	<version>4.0</version>
+	<version>4.0-cubed</version>
 	<packaging>jar</packaging>
 	<name>timingsystem.restapi</name>
 	<url>http://maven.apache.org</url>
@@ -47,7 +47,7 @@
 		<dependency>
 			<groupId>com.github.FrostHexABG</groupId>
 			<artifactId>TimingSystem</artifactId>
-			<version>3.3.4</version>
+			<version>3.5</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>

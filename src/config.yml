@@ -1,6 +1,14 @@
-# TimingSystemRESTApi v0.0.2+ by Justin "JustBru00 Brubaker 
+# TimingSystemRESTApi v0.0.2+ by Justin "JustBru00 Brubaker
 rest_api_enabled: true
 port: 4567
+
+# Live race telemetry websocket, served on the same port at /ws/v1/live
+# Connect with: ws://your-server:4567/ws/v1/live?api_key=YOUR_READ_ONLY_KEY
+# (api_key is only required when api_keys.read_only below is non-empty)
+websocket_enabled: true
+# How often (in server ticks, 20 = 1 second) a full heat snapshot is pushed and
+# positions are re-checked for changes.
+snapshot_interval_ticks: 20
 
 # List of API keys for read_only or read_write
 api_keys:

@@ -9,8 +9,13 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import org.bukkit.scheduler.BukkitTask;
+
 import com.frosthex.timingsystem.restapi.bstats.BStats;
 import com.frosthex.timingsystem.restapi.commands.TimingSystemRestApiCommand;
+import com.frosthex.timingsystem.restapi.listeners.RaceEventListener;
+import com.frosthex.timingsystem.restapi.network.RaceSocketManager;
+import com.frosthex.timingsystem.restapi.network.SnapshotTask;
 import com.frosthex.timingsystem.restapi.network.SparkManager;
 import com.frosthex.timingsystem.restapi.utils.Messager;
 
@@ -38,7 +43,7 @@ public class TimingSystemRESTApiPlugin extends JavaPlugin {
 	
 	private static TimingSystemRESTApiPlugin instance;
 	private static final int BSTATS_PLUGIN_ID = 18069;
-	private static final String[] TIMING_SYSTEM_SUPPORTED_VERSIONS = {"3.3.3", "3.3.4", "3.3.5", "3.4"};
+	private static final String[] TIMING_SYSTEM_SUPPORTED_VERSIONS = {"3.3.3", "3.3.4", "3.3.5", "3.4", "3.5", "3.6"};
 	
 	public static ConsoleCommandSender clogger = Bukkit.getServer().getConsoleSender();
 	public static Logger log = Bukkit.getLogger();
@@ -46,11 +51,18 @@ public class TimingSystemRESTApiPlugin extends JavaPlugin {
 	public static String prefix = Messager.color("&8[&bTimingSystem&fRESTApi&8] &7");
 
 	public static TImingLeague timingleague;
-	
+
+	private BukkitTask snapshotTask;
+
 
 	@Override
 	public void onDisable() {
 		Messager.msgConsole("&6Disabled plugin.");
+		if (snapshotTask != null) {
+			snapshotTask.cancel();
+			snapshotTask = null;
+		}
+		RaceSocketManager.closeAll();
 		SparkManager.stopSpark();
 		instance = null;
 	}
@@ -104,6 +116,10 @@ public class TimingSystemRESTApiPlugin extends JavaPlugin {
 			SparkManager.setPort(portFromConfig);
 		}
 		
+		// Live race websocket
+		boolean websocketEnabled = getConfig().getBoolean("websocket_enabled", true);
+		SparkManager.setWebsocketEnabled(websocketEnabled);
+
 		// Create public_html folder if it doesn't exist.
 		SparkManager.setPathToPublicHtmlFolder(TimingSystemRESTApiPlugin.getInstance().getDataFolder().getPath() + File.separator + "public_html");
 		
@@ -120,7 +136,15 @@ public class TimingSystemRESTApiPlugin extends JavaPlugin {
 		// Commands
 		getCommand("timingsystemrestapi").setExecutor(new TimingSystemRestApiCommand());
 		
-		// Strike the flint, ignite the spark in 20 seconds		
+		// Live race websocket: register the TimingSystem event listener and start the snapshot loop.
+		if (getConfig().getBoolean("rest_api_enabled") && websocketEnabled) {
+			getServer().getPluginManager().registerEvents(new RaceEventListener(), this);
+			long snapshotInterval = getConfig().getLong("snapshot_interval_ticks", 20L);
+			snapshotTask = new SnapshotTask().runTaskTimer(this, snapshotInterval, snapshotInterval);
+			Messager.msgConsole("&6Live race websocket wiring registered (snapshot every " + snapshotInterval + " ticks).");
+		}
+
+		// Strike the flint, ignite the spark in 20 seconds
 		if (getConfig().getBoolean("rest_api_enabled")) {
 			Bukkit.getScheduler().runTaskLaterAsynchronously(instance, new Runnable() {
 				

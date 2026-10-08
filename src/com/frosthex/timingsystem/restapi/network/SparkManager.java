@@ -6,6 +6,7 @@ import static spark.Spark.halt;
 import static spark.Spark.port;
 import static spark.Spark.staticFiles;
 import static spark.Spark.stop;
+import static spark.Spark.webSocket;
 
 import java.util.Collection;
 import java.util.List;
@@ -25,6 +26,7 @@ import org.bukkit.inventory.ItemStack;
 import com.frosthex.timingsystem.restapi.TimingSystemRESTApiPlugin;
 import com.frosthex.timingsystem.restapi.integrations.DailyGPRoutes;
 import com.frosthex.timingsystem.restapi.integrations.PartyTSRoutes;
+import com.frosthex.timingsystem.restapi.utils.HeatJson;
 import com.frosthex.timingsystem.restapi.utils.Messager;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -69,13 +71,19 @@ public class SparkManager {
 	
 	private static int port;
 	private static String pathToPublicHtmlFolder;
+	private static boolean websocketEnabled = true;
 
 	public static void initSpark() {
 		// For full list of REST API routes see: https://github.com/JustBru00/TimingSystemRESTApi/wiki/REST-API-Documentation
 		
 		port(port);
 		staticFiles.externalLocation(pathToPublicHtmlFolder);
-		
+
+		// WebSocket routes MUST be mapped before any HTTP route / before Spark initialises.
+		if (websocketEnabled) {
+			webSocket("/ws/v1/live", RaceSocketManager.class);
+			Messager.msgConsole("&aLive race websocket enabled at /ws/v1/live");
+		}
 		before("/api/*/readonly/*", (request, response) -> {
 			// Set MIME type for responses #16
 			response.type("application/json");
@@ -469,45 +477,17 @@ public class SparkManager {
 			}
 			
 			JsonArray arrayObj = new JsonArray();
-			
+
 			for (Heat heat : heats) {
-				JsonObject heatObj = new JsonObject();
-				heatObj.addProperty("name", heat.getName());
-				heatObj.addProperty("event_name", heat.getEvent().getDisplayName());
-				heatObj.addProperty("id", heat.getId());
-				heatObj.addProperty("qualifying", (heat.getRound().getType() == RoundType.QUALIFICATION)); // Issue #19
-				
-				JsonArray driverPositionsArray = new JsonArray();
-				List<DriverDetails> driverDetailsList = null;
-				// ISSUE #26
+				// ISSUE #26 - TimingSystem can throw IndexOutOfBoundsException while reading live state.
 				try {
-					driverDetailsList = TimingSystemAPI.getAllDriverDetailsFromHeat(heat);
-				} catch (IndexOutOfBoundsException e ) {
+					arrayObj.add(HeatJson.heatToJson(heat));
+				} catch (IndexOutOfBoundsException e) {
 					halt(500, "{\"error\":true,\"error_message\":\"Something went wrong. TimingSystem generated a IndexOutOfBoundsException while trying to getAllDriverDetailsFromHeat().\"}");
 				}
 				// END ISSUE #26
-
-				for (DriverDetails dd : driverDetailsList) {
-					JsonObject driverObj = new JsonObject();
-					driverObj.addProperty("name", dd.getName());
-					driverObj.addProperty("team_color", dd.getTeamColor());
-					driverObj.addProperty("uuid", dd.getUuid());
-					driverObj.addProperty("gap", dd.getGap());
-					driverObj.addProperty("gap_to_leader", dd.getGapFromLeader());
-					driverObj.addProperty("laps", dd.getLaps());
-					driverObj.addProperty("pits", dd.getPits());
-					driverObj.addProperty("position", dd.getPosition());
-					driverObj.addProperty("start_position", dd.getStartPosition());
-					driverObj.addProperty("is_in_pit", dd.isInpit());
-					driverObj.addProperty("is_offline", dd.isOffline());
-					driverObj.addProperty("best_lap", dd.getBestLap());
-
-					driverPositionsArray.add(driverObj);
-				}
-				heatObj.add("driver_details", driverPositionsArray);
-				arrayObj.add(heatObj);
 			}
-			
+
 			response.status(200);
 			return arrayObj.toString();
 		});
@@ -746,6 +726,10 @@ public class SparkManager {
 
 	public static void setPathToPublicHtmlFolder(String pathToPublicHtmlFolder) {
 		SparkManager.pathToPublicHtmlFolder = pathToPublicHtmlFolder;
+	}
+
+	public static void setWebsocketEnabled(boolean websocketEnabled) {
+		SparkManager.websocketEnabled = websocketEnabled;
 	}
 	
 	private static JsonObject serializeLocation(Location loc) {
